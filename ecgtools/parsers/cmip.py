@@ -180,3 +180,56 @@ def parse_cmip5_using_directories(file):
         return {INVALID_ASSET: file, TRACEBACK: traceback.format_exc()}
 
     return fileparts
+
+
+def parse_obs4mip_using_directories(file):
+    """
+    Extract attributes of a file using information from CMI6 DRS.
+    References
+    CMIP6 DRS: http://goo.gl/v1drZl
+    Controlled Vocabularies (CVs) for use in CMIP6: https://github.com/WCRP-CMIP/CMIP6_CVs
+    Directory structure =
+    <activity_id>/
+        <institution_id>/
+            <source_id>/
+                <processor_id>/
+                    <table_id>/
+                        <variable_id>/
+                            <grid_label>/
+                                <version>
+    file name=<variable_id>_<table_id>_<source_id>_<processor_id >_<grid_label>[_<time_range>].nc
+    For time-invariant fields, the last segment (time_range) above is omitted.
+    Example for time series data: ta_mon_ERA-5_PCMDI_1x1_198301-198312.nc
+    Example for annual cycle climatology data: zg_monC_ERA-40_PCMDI_gn_195709-200208.AC.v20230516.nc
+    """
+    basename = pathlib.Path(file).name
+    filename_template = '{variable_id}_{table_id}_{source_id}_{processor_id}_{grid_label}_{time_range}[.AC.{version}].nc'
+
+    gridspec_template = (
+        '{variable_id}_{table_id}_{source_id}_{processor_id}_{grid_label}.nc'
+    )
+    templates = [filename_template, gridspec_template]
+    fileparts = reverse_filename_format(basename, templates=templates)
+    try:
+        parent = str(pathlib.Path(file).parent)
+        parent_split = parent.split(f"/{fileparts['source_id']}/")
+        part_1 = parent_split[0].strip('/').split('/')
+        grid_label = parent.split(f"/{fileparts['variable_id']}/")[1].strip('/').split('/')[0]
+        fileparts['grid_label'] = grid_label
+        fileparts['activity_id'] = part_1[-2]
+        fileparts['institution_id'] = part_1[-1]
+        version_regex = r'v\d{4}\d{2}\d{2}|v\d{1}'
+        version = extract_attr_with_regex(parent, regex=version_regex) or 'v0'
+        fileparts['version'] = version
+        fileparts['path'] = file
+
+        print('parent:', parent)
+        print('parent_split:', parent_split)
+        print('part_1:', part_1)
+        print('grid_label:', grid_label)
+        print('version:', version)
+
+    except Exception:
+        return {INVALID_ASSET: file, TRACEBACK: traceback.format_exc()}
+
+    return fileparts
