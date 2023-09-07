@@ -91,7 +91,7 @@ def parse_cmip6(file):
 
 def parse_cmip6_using_directories(file):
     """
-    Extract attributes of a file using information from CMI6 DRS.
+    Extract attributes of a file using information from CMI6 data reference syntax (DRS).
     References
     CMIP6 DRS: http://goo.gl/v1drZl
     Controlled Vocabularies (CVs) for use in CMIP6: https://github.com/WCRP-CMIP/CMIP6_CVs
@@ -184,10 +184,11 @@ def parse_cmip5_using_directories(file):
 
 def parse_obs4mip_using_directories(file):
     """
-    Extract attributes of a file using information from CMI6 DRS.
+    Extract attributes of a file using information from obs4MIPs data specifications (ODS).
     References
-    CMIP6 DRS: http://goo.gl/v1drZl
-    Controlled Vocabularies (CVs) for use in CMIP6: https://github.com/WCRP-CMIP/CMIP6_CVs
+    obs4MIPs: https://pcmdi.github.io/obs4MIPs/
+    obs4MIPs ODS: https://goo.gl/jVZsQl
+    Controlled Vocabularies (CVs) for use in obs4MIPs: https://github.com/PCMDI/obs4MIPs-cmor-tables
     Directory structure =
     <activity_id>/
         <institution_id>/
@@ -203,6 +204,8 @@ def parse_obs4mip_using_directories(file):
     Example for annual cycle climatology data: zg_monC_ERA-40_PCMDI_gn_195709-200208.AC.v20230516.nc
     """
     basename = pathlib.Path(file).name
+    print('file:', file)
+    print('basename:', basename)
     filename_template = '{variable_id}_{table_id}_{source_id}_{processor_id}_{grid_label}_{time_range}[.AC.{version}].nc'
 
     gridspec_template = (
@@ -223,11 +226,10 @@ def parse_obs4mip_using_directories(file):
         fileparts['version'] = version
         fileparts['path'] = file
 
-        print('parent:', parent)
-        print('parent_split:', parent_split)
-        print('part_1:', part_1)
-        print('grid_label:', grid_label)
-        print('version:', version)
+        # Collect time range information from file because it is not included in the directory structure
+        if 'time_range' not in list(fileparts.keys()):
+            time_range = basename.split(f"_{fileparts['grid_label']}_")[1].strip('_').strip('.').split('.')[0]
+            fileparts['time_range'] = time_range
 
     except Exception:
         return {INVALID_ASSET: file, TRACEBACK: traceback.format_exc()}
